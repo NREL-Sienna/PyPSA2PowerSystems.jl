@@ -42,10 +42,12 @@ generator:
   name: active_power
 - custom_name: q_set
   name: reactive_power
-- custom_name: p_nom_opt
+- custom_name: p_set
   name: active_power_limits_max
 - custom_name: p_set
   name: base_mva
+- custom_name: zero
+  name: active_power_limits_min
 - custom_name: p_set
   name: output_point_0
 - custom_name: marginal_cost
@@ -60,8 +62,6 @@ generator:
   name: unit_type
 - custom_name: zero
   name: fuel_price
-- custom_name: zero
-  name: active_power_limits_min
 - custom_name: zero
   name: min_down_time
 - custom_name: zero

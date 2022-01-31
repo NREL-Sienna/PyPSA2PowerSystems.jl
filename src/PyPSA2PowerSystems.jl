@@ -64,6 +64,11 @@ function format_gen(src_folder::AbstractString)
     gens.bus = "bus_" .* string.(gens.bus)
 
     gens.zero .= 0.0
+
+    if !hasproperty(gens, :carrier)
+        gens.carrier .= "OCGT" #make a dummy carrier col
+    end
+
     gens.fuel = replace.(gens.carrier, "OCGT" => "NG")
     gens.unit_type = replace(gens.carrier, "OCGT" => "GT")
 
