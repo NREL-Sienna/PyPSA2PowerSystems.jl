@@ -1,0 +1,88 @@
+branch:
+- custom_name: name
+  name: name
+- custom_name: bus0
+  name: connection_points_from
+- custom_name: bus1
+  name: connection_points_to
+- custom_name: r
+  name: r
+  unit_system: device_base
+- custom_name: x
+  name: x
+  unit_system: device_base
+- custom_name: b
+  name: primary_shunt
+  unit_system: device_base
+- custom_name: s_nom
+  name: rate
+- custom_name: tap_position
+  name: tap
+- custom_name: is_transformer
+  name: is_transformer
+bus:
+- custom_name: id
+  name: bus_id
+- custom_name: name
+  name: name
+- custom_name: v_nom
+  name: base_voltage
+- custom_name: control
+  name: bus_type
+- custom_name: v_mag_pu_set
+  name: voltage
+  unit_system: device_base
+dc_branch: []
+generator:
+- custom_name: name
+  name: name
+- custom_name: bus
+  name: bus_id
+- custom_name: p_set
+  name: active_power
+- custom_name: q_set
+  name: reactive_power
+- custom_name: p_nom_opt
+  name: active_power_limits_max
+- custom_name: p_set
+  name: base_mva
+- custom_name: p_set
+  name: output_point_0
+- custom_name: marginal_cost
+  name: variable_cost
+- custom_name: unit_type
+  name: unit_type
+- custom_name: carrier
+  name: category
+- custom_name: fuel
+  name: fuel
+- custom_name: unit_type
+  name: unit_type
+- custom_name: zero
+  name: fuel_price
+- custom_name: zero
+  name: active_power_limits_min
+- custom_name: zero
+  name: min_down_time
+- custom_name: zero
+  name: min_up_time
+- custom_name: Heat Rate
+  name: heat_rate_avg_0
+load:
+- custom_name: name
+  name: name
+- custom_name: bus
+  name: bus_id
+- custom_name: p_set
+  name: active_power
+- custom_name: q_set
+  name: reactive_power
+- custom_name: p_set
+  name: base_power
+- custom_name: p_set
+  name: max_active_power
+- custom_name: q_set
+  name: max_reactive_power
+reserves: []
+simulation_objects: []
+storage: []
