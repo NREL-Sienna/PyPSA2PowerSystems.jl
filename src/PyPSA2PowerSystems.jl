@@ -16,9 +16,17 @@ function System(src_folder::AbstractString)
     rawsys = PowerSystems.PowerSystemTableData(
         joinpath(src_folder, OUT),
         100.0,
-        joinpath(dirname(dirname(pathof(PyPSA2PowerSystems))), "deps", "user_descriptors.yaml"),
+        joinpath(
+            dirname(dirname(pathof(PyPSA2PowerSystems))),
+            "deps",
+            "user_descriptors.yaml",
+        ),
         #timeseries_metadata_file = joinpath(dirname(dirname(pathof(PyPSA2PowerSystems))), "deps", "timeseries_pointers.json"),
-        generator_mapping_file = joinpath(dirname(dirname(pathof(PyPSA2PowerSystems))), "deps", "generator_mapping.yaml"),
+        generator_mapping_file = joinpath(
+            dirname(dirname(pathof(PyPSA2PowerSystems))),
+            "deps",
+            "generator_mapping.yaml",
+        ),
     )
     return PowerSystems.System(rawsys;)# time_series_resolution = Dates.Hour(1))
 end
@@ -50,7 +58,7 @@ function format_branch(src_folder::AbstractString)
     transformers.name = "transformer_" .* string.(transformers.name)
 
     common_cols = intersect(names(lines), names(transformers))
-    branches = vcat(lines[:,common_cols], transformers[:,common_cols])
+    branches = vcat(lines[:, common_cols], transformers[:, common_cols])
 
     branches.bus0 = "bus_" .* string.(branches.bus0)
     branches.bus1 = "bus_" .* string.(branches.bus1)
