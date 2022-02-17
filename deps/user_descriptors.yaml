@@ -38,23 +38,23 @@ generator:
   name: name
 - custom_name: bus
   name: bus_id
-- custom_name: p_set
+- custom_name: generators_p_set
   name: active_power
-- custom_name: q_set
+- custom_name: generators_q_set
   name: reactive_power
-- custom_name: p_set
+- custom_name: generators_p_nom
   name: active_power_limits_max
-- custom_name: p_set
+- custom_name: generators_p_nom
   name: base_mva
-- custom_name: zero
+- custom_name: generators_p_min
   name: active_power_limits_min
-- custom_name: p_set
+- custom_name: generators_p_min
   name: output_point_0
-- custom_name: marginal_cost
+- custom_name: generators_marginal_cost
   name: variable_cost
 - custom_name: unit_type
   name: unit_type
-- custom_name: carrier
+- custom_name: generators_carrier
   name: category
 - custom_name: fuel
   name: fuel
@@ -62,26 +62,30 @@ generator:
   name: unit_type
 - custom_name: zero
   name: fuel_price
-- custom_name: zero
+- custom_name: generators_min_down_time
   name: min_down_time
-- custom_name: zero
+- custom_name: generators_min_up_time
   name: min_up_time
+- custom_name: shut_down_cost
+  name: shut_down_cost
+- custom_name: start_up_cost
+  name: start_up_cost
 - custom_name: Heat Rate
   name: heat_rate_avg_0
 load:
 - custom_name: name
   name: name
-- custom_name: bus
+- custom_name: loads_bus
   name: bus_id
-- custom_name: p_set
+- custom_name: loads_p_set
   name: active_power
-- custom_name: q_set
+- custom_name: loads_q_set
   name: reactive_power
-- custom_name: p_set
+- custom_name: loads_p_set
   name: base_power
-- custom_name: p_set
+- custom_name: loads_p_set
   name: max_active_power
-- custom_name: q_set
+- custom_name: loads_q_set
   name: max_reactive_power
 reserves: []
 simulation_objects: []
