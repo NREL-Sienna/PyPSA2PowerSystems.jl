@@ -205,6 +205,7 @@ function format_timeseries(src_file::AbstractString, out_path::AbstractString)
     NetCDF.open(src_file) do data
         for ts_id in ("loads_t_p", "generators_t_p")
             ts[ts_id] = get_nc_ts(data, "loads_t_p")
+            (isnothing(ts[ts_id]) || DataFrames.nrow(ts[ts_id])) <= 1 && continue
             tsp_path = joinpath(tsp_dir, ts_id * ".csv")
             CSV.write(tsp_path, ts[ts_id])
             for i in names(ts[ts_id])
@@ -229,8 +230,10 @@ function format_timeseries(src_file::AbstractString, out_path::AbstractString)
         end
     end
 
-    open(joinpath(out_path, "timeseries_pointers.json"), "w") do io
-        JSON3.pretty(io, tsp)
+    if length(tsp) > 0
+        open(joinpath(out_path, "timeseries_pointers.json"), "w") do io
+            JSON3.pretty(io, tsp)
+        end
     end
 end
 
