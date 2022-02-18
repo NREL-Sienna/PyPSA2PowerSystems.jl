@@ -9,5 +9,5 @@ Simple Julia module to translate PyPSA outputs into a [PowerSystems.jl](https://
 using Pkg
 Pkg.add("https://github.com/NREL-SIIP/PyPSA2PowerSystems.jl.git")
 
-System("path/to/pypsa_output/")
+System("path/to/pypsa_output.nc") #takes a PyPSA NetCDF file
 ```
