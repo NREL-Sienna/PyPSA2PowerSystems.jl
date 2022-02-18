@@ -2,11 +2,34 @@ module PyPSA2PowerSystems
 
 import PowerSystems
 import NetCDF
+import JSON3
 import DataFrames
 import CSV
+import Dates
 
 export System
 export format_pypsa
+
+const BUS_PREFIX = "buses_"
+const LOAD_PREFIX = "loads_"
+const GEN_PREFIX = "generators_"
+const LINE_PREFIX = "lines_"
+const TFMR_PREFIX = "transformers_"
+
+const PYPSA_PSY_CAT = Dict("Load" => "PowerLoad", "Generator" => "Generator")
+
+const PYPSA_CATS = Dict(
+    "offwind-ac" => (prime_mover = "WS", fuel = "WIND"),
+    "onwind" => (prime_mover = "WT", fuel = "NG"),
+    "solar" => (prime_mover = "PV", fuel = "SOLAR"),
+    "CCGT" => (prime_mover = "GT", fuel = "NG"),
+    "OCGT" => (prime_mover = "CT", fuel = "NG"),
+    "ror" => (prime_mover = "HY", fuel = "WATER"),
+    "biomass" => (prime_mover = "ST", fuel = "AG_BIPRODUCT"),
+    "nuclear" => (prime_mover = "ST", fuel = "NUC"),
+    "offwind-dc" => (prime_mover = "WS", fuel = "WIND"),
+    "geothermal" => (prime_mover = "GT", fuel = "GEO"),
+)
 
 function System(src_file::AbstractString; cleanup = true)
 
@@ -42,6 +65,7 @@ function format_pypsa(src_file::AbstractString; cleanup = true)
     format_branch(src_file, out_path)
     format_gen(src_file, out_path)
     format_load(src_file, out_path)
+    format_timeseries(src_file, out_path)
     return out_path
 end
 
@@ -52,17 +76,17 @@ end
 function format_bus(src_file::AbstractString, out_path::AbstractString)
     NetCDF.open(src_file) do data
 
-        id = parse.(Int, get_nc_var(data, "buses_i"))
-        name = "bus_" .* string.(id)
+        name = BUS_PREFIX .* get_nc_var(data, "buses_i")
+        nbus = length(name)
         v_nom = get_nc_var(data, "buses_v_nom")
-        v_mag_pu_set = get_nc_var(data, "buses_v_mag_pu_set", ones(length(id)))
-        control = get_nc_var(data, "buses_control", repeat(["PV"], length(id)))
+        v_mag_pu_set = get_nc_var(data, "buses_v_mag_pu_set", ones(nbus))
+        control = get_nc_var(data, "buses_control", repeat(["PV"], nbus))
         buses = DataFrames.DataFrame(
+            :id => 1:nbus,
             :name => name,
             :v_nom => v_nom,
             :v_mag_pu_set => v_mag_pu_set,
             :control => control,
-            :id => id,
         )
         CSV.write(joinpath(out_path, "bus.csv"), buses)
     end
@@ -71,23 +95,24 @@ end
 function format_branch(src_file::AbstractString, out_path::AbstractString)
     NetCDF.open(src_file) do data
         branches = []
-        for br in ("line", "transformer")
-            id = get_nc_var(data, "$(br)s_i")
+        for br in (LINE_PREFIX, TFMR_PREFIX)
+            id = get_nc_var(data, "$(br)i")
+            isnothing(id) && continue
             nbus = length(id)
             df = DataFrames.DataFrame(
-                :name => "$(br)_" .* string.(id),
-                :r => get_nc_var(data, "$(br)s_r"),
-                :x => get_nc_var(data, "$(br)s_x"),
-                :b => get_nc_var(data, "$(br)s_b", zeros(nbus)),
+                :name => "$(br)" .* string.(id),
+                :r => get_nc_var(data, "$(br)r"),
+                :x => get_nc_var(data, "$(br)x"),
+                :b => get_nc_var(data, "$(br)b", zeros(nbus)),
                 :s_nom => get_nc_var(
                     data,
-                    "$(br)s_s_nom",
-                    get_nc_var(data, "$(br)s_s_nom_opt", zeros(nbus)),
+                    "$(br)s_nom",
+                    get_nc_var(data, "$(br)s_nom_opt", zeros(nbus)),
                 ),
-                :bus0 => "bus_" .* string.(get_nc_var(data, "$(br)s_bus0")),
-                :bus1 => "bus_" .* string.(get_nc_var(data, "$(br)s_bus1")),
-                :tap_position => get_nc_var(data, "$(br)s_tap_position", zeros(nbus)),
-                :is_transformer => br == "line" ? falses(nbus) : trues(nbus),
+                :bus0 => BUS_PREFIX .* string.(get_nc_var(data, "$(br)bus0")),
+                :bus1 => BUS_PREFIX .* string.(get_nc_var(data, "$(br)bus1")),
+                :tap_position => get_nc_var(data, "$(br)tap_position", zeros(nbus)),
+                :is_transformer => br == LINE_PREFIX ? falses(nbus) : trues(nbus),
             )
             push!(branches, df)
         end
@@ -98,7 +123,7 @@ end
 function format_gen(src_file::AbstractString, out_path::AbstractString)
     NetCDF.open(src_file) do data
 
-        name = "gen_" .* string.(get_nc_var(data, "generators_i"))
+        name = GEN_PREFIX .* string.(get_nc_var(data, "generators_i"))
         ngen = length(name)
         generators_p_set = get_nc_var(data, "generators_p_set", zeros(ngen))
         generators_p_nom = get_nc_var(
@@ -109,7 +134,7 @@ function format_gen(src_file::AbstractString, out_path::AbstractString)
 
         gens = DataFrames.DataFrame(
             :name => name,
-            :bus => "bus_" .* string.(get_nc_var(data, "generators_bus")),
+            :bus => BUS_PREFIX .* string.(get_nc_var(data, "generators_bus")),
             :generators_p_set => generators_p_set,
             :generators_q_set => get_nc_var(data, "generators_q_set", zeros(ngen)),
             :generators_p_nom => generators_p_nom,
@@ -127,8 +152,9 @@ function format_gen(src_file::AbstractString, out_path::AbstractString)
             :shut_down_cost => get_nc_var(data, "shut_down_cost", zeros(ngen)),
         )
         gens.zero .= 0.0
-        gens.fuel = replace.(gens.generators_carrier, "OCGT" => "NG")
-        gens.unit_type = replace(gens.generators_carrier, "OCGT" => "GT")
+        gens.fuel = getfield.(map(x -> PYPSA_CATS[x], gens.generators_carrier), :fuel)
+        gens.unit_type =
+            getfield.(map(x -> PYPSA_CATS[x], gens.generators_carrier), :prime_mover)
 
         CSV.write(joinpath(out_path, "gen.csv"), gens)
     end
@@ -136,16 +162,75 @@ end
 
 function format_load(src_file::AbstractString, out_path::AbstractString)
     NetCDF.open(src_file) do data
-
-        name = "loads_" .* string.(get_nc_var(data, "loads_i"))
+        name = LOAD_PREFIX .* string.(get_nc_var(data, "loads_i"))
         nload = length(name)
         loads = DataFrames.DataFrame(
             :name => name,
-            :loads_bus => "bus_" .* string.(get_nc_var(data, "loads_bus")),
+            :loads_bus => BUS_PREFIX .* string.(get_nc_var(data, "loads_bus")),
             :loads_q_set => get_nc_var(data, "loads_q_set", zeros(nload)),
             :loads_p_set => get_nc_var(data, "loads_p_set", zeros(nload)),
         )
         CSV.write(joinpath(out_path, "load.csv"), loads)
+    end
+end
+
+function get_nc_ts(data, ts)
+    ts_val = get_nc_var(data, ts)
+    if isnothing(ts_val)
+        return nothing
+    end
+    ts_name = (first(split(ts, "_")) * "_") .* get_nc_var(data, ts * "_i")
+    df = DataFrames.DataFrame(Dict(zip(ts_name, eachrow(ts_val))))
+    periods = get_nc_var(data, "snapshots")
+    units =
+        haskey(data.vars, "snapshots") ?
+        get(data.vars["snapshots"].atts, "units", nothing) :
+        get(data.gatts, "units", nothing)
+    if isnothing(units)
+        ref_date = Dates.today()
+    else
+        @assert occursin("days", units)
+        ref_date =
+            Dates.DateTime(replace(units, "days since " => ""), "yyyy-mm-dd HH:MM:SS")
+    end
+    df.DateTime = ref_date .+ Dates.Day.(periods)
+
+    return df
+end
+
+function format_timeseries(src_file::AbstractString, out_path::AbstractString)
+    tsp_dir = mkdir(joinpath(out_path, "timeseries"))
+    tsp = []
+    ts = Dict()
+    NetCDF.open(src_file) do data
+        for ts_id in ("loads_t_p", "generators_t_p")
+            ts[ts_id] = get_nc_ts(data, "loads_t_p")
+            tsp_path = joinpath(tsp_dir, ts_id * ".csv")
+            CSV.write(tsp_path, ts[ts_id])
+            for i in names(ts[ts_id])
+                i == "DateTime" && continue
+                push!(
+                    tsp,
+                    Dict(
+                        "category" => PYPSA_PSY_CAT[uppercasefirst(
+                            first(split(ts_id, "_"))[1:end-1],
+                        )],
+                        "component_name" => i,
+                        "property" => "Max Active Power",
+                        "data_file" => joinpath("timeseries", ts_id * ".csv"),
+                        "normalization_factor" => "max",
+                        "resolution" => 3600,
+                        "name" => "max_active_power",
+                        "scaling_factor_multiplier_module" => "PowerSystems",
+                        "scaling_factor_multiplier" => "get_max_active_power",
+                    ),
+                )
+            end
+        end
+    end
+
+    open(joinpath(out_path, "timeseries_pointers.json"), "w") do io
+        JSON3.pretty(io, tsp)
     end
 end
 
