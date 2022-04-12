@@ -87,6 +87,7 @@ function format_bus(src_file::AbstractString, out_path::AbstractString)
             :v_nom => v_nom,
             :v_mag_pu_set => v_mag_pu_set,
             :control => control,
+            :angle => zeros(nbus),
         )
         CSV.write(joinpath(out_path, "bus.csv"), buses)
     end

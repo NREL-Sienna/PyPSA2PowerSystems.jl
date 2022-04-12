@@ -32,6 +32,8 @@ bus:
 - custom_name: v_mag_pu_set
   name: voltage
   unit_system: device_base
+- custom_name: angle
+  name: angle
 dc_branch: []
 generator:
 - custom_name: name
@@ -48,6 +50,10 @@ generator:
   name: base_mva
 - custom_name: generators_p_min
   name: active_power_limits_min
+- custom_name: generators_p_min
+  name: reactive_power_limits_min
+- custom_name: generators_p_nom
+  name: reactive_power_limits_max
 - custom_name: generators_p_min
   name: output_point_0
 - custom_name: generators_marginal_cost
