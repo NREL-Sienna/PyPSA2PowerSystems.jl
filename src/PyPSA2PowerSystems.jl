@@ -15,10 +15,12 @@ const LOAD_PREFIX = "loads_"
 const GEN_PREFIX = "generators_"
 const LINE_PREFIX = "lines_"
 const TFMR_PREFIX = "transformers_"
+const STRG_PREFIX = "store_"
 
 const PYPSA_PSY_CAT = Dict("Load" => "PowerLoad", "Generator" => "Generator")
 
-const PYPSA_CATS = Dict(
+# TODO: read this from a config file
+PYPSA_CATS = Dict(
     "offwind-ac" => (prime_mover = "WS", fuel = "WIND"),
     "onwind" => (prime_mover = "WT", fuel = "NG"),
     "solar" => (prime_mover = "PV", fuel = "SOLAR"),
@@ -29,6 +31,12 @@ const PYPSA_CATS = Dict(
     "nuclear" => (prime_mover = "ST", fuel = "NUC"),
     "offwind-dc" => (prime_mover = "WS", fuel = "WIND"),
     "geothermal" => (prime_mover = "GT", fuel = "GEO"),
+    "oil" => (prime_mover = "GT", fuel = "DFO"),
+    "coal" => (prime_mover = "ST", fuel = "COAL"),
+    "hydro" => (prime_mover = "HY", fuel = "WATER"),
+    "solar-utility" => (prime_mover = "PV", fuel = "SOLAR"),
+    "solar-rooftop" => (prime_mover = "PV", fuel = "SOLAR"),
+    "hydrogen" => (prime_mover = "FC", fuel = "HYDROGEN"),
 )
 
 function System(src_file::AbstractString; cleanup = true)
@@ -188,13 +196,18 @@ function get_nc_ts(data, ts)
         get(data.vars["snapshots"].atts, "units", nothing) :
         get(data.gatts, "units", nothing)
     if isnothing(units)
-        ref_date = Dates.today()
-    else
-        @assert occursin("days", units)
+        ref_date = Dates.DateTime(Dates.today())
+        @warn "unknown period length, assuming hours"
+        DataFrames.insertcols!(df, 1, :DateTime => ref_date .+ Dates.Hour.(periods))
+    elseif occursin("days since", units)
         ref_date =
             Dates.DateTime(replace(units, "days since " => ""), "yyyy-mm-dd HH:MM:SS")
+        DataFrames.insertcols!(df, 1, :DateTime => ref_date .+ Dates.Day.(periods))
+    elseif occursin("hours since", units)
+        ref_date =
+            Dates.DateTime(replace(units, "hours since " => ""), "yyyy-mm-dd HH:MM:SS")
+        DataFrames.insertcols!(df, 1, :DateTime => ref_date .+ Dates.Hour.(periods))
     end
-    df.DateTime = ref_date .+ Dates.Day.(periods)
 
     return df
 end
@@ -205,7 +218,7 @@ function format_timeseries(src_file::AbstractString, out_path::AbstractString)
     ts = Dict()
     NetCDF.open(src_file) do data
         for ts_id in ("loads_t_p", "generators_t_p")
-            ts[ts_id] = get_nc_ts(data, "loads_t_p")
+            ts[ts_id] = get_nc_ts(data, ts_id)
             (isnothing(ts[ts_id]) || DataFrames.nrow(ts[ts_id])) <= 1 && continue
             tsp_path = joinpath(tsp_dir, ts_id * ".csv")
             CSV.write(tsp_path, ts[ts_id])

@@ -78,6 +78,8 @@ generator:
   name: start_up_cost
 - custom_name: Heat Rate
   name: heat_rate_avg_0
+- custom_name: generators_p_nom
+  name: ramp_limits
 load:
 - custom_name: name
   name: name
