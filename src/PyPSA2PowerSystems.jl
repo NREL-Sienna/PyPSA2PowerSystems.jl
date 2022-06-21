@@ -10,6 +10,9 @@ import Dates
 export System
 export format_pypsa
 
+const PSY = PowerSystems
+const IS = PSY.IS
+
 const BUS_PREFIX = "buses_"
 const LOAD_PREFIX = "loads_"
 const GEN_PREFIX = "generators_"
@@ -31,12 +34,12 @@ PYPSA_CATS = Dict(
     "nuclear" => (prime_mover = "ST", fuel = "NUC"),
     "offwind-dc" => (prime_mover = "WS", fuel = "WIND"),
     "geothermal" => (prime_mover = "GT", fuel = "GEO"),
-    "oil" => (prime_mover = "GT", fuel = "DFO"),
+    "oil" => (prime_mover = "GT", fuel = "DISTILLATE_FUEL_OIL"),
     "coal" => (prime_mover = "ST", fuel = "COAL"),
     "hydro" => (prime_mover = "HY", fuel = "WATER"),
     "solar-utility" => (prime_mover = "PV", fuel = "SOLAR"),
     "solar-rooftop" => (prime_mover = "PV", fuel = "SOLAR"),
-    "hydrogen" => (prime_mover = "FC", fuel = "HYDROGEN"),
+    "hydrogen" => (prime_mover = "FC", fuel = "OTHER"), # TODO: make storage?
 )
 
 function System(src_file::AbstractString; cleanup = true)
@@ -48,6 +51,8 @@ function System(src_file::AbstractString; cleanup = true)
     else
         throw(error("must be a valid PyPSA netcdf file or directory"))
     end
+
+    @info "Translating PyPSA data" out_path _group = IS.LOG_GROUP_PARSING
     # Make a PSY System
     rawsys = PowerSystems.PowerSystemTableData(
         out_path,
@@ -57,7 +62,7 @@ function System(src_file::AbstractString; cleanup = true)
             "deps",
             "user_descriptors.yaml",
         ),
-        #timeseries_metadata_file = joinpath(dirname(dirname(pathof(PyPSA2PowerSystems))), "deps", "timeseries_pointers.json"),
+        timeseries_metadata_file = joinpath(out_path, "timeseries_pointers.json"),
         generator_mapping_file = joinpath(
             dirname(dirname(pathof(PyPSA2PowerSystems))),
             "deps",
@@ -173,12 +178,20 @@ function format_load(src_file::AbstractString, out_path::AbstractString)
     NetCDF.open(src_file) do data
         name = LOAD_PREFIX .* string.(get_nc_var(data, "loads_i"))
         nload = length(name)
+        ts = get_nc_ts(data, "loads_t_p")
+        ts_names = setdiff(names(ts), ["DateTime"])
+        pmax = DataFrames.DataFrame(
+            :name => ts_names,
+            :pmax => vec(maximum(Matrix(ts[:, ts_names]), dims = 1)),
+        )
+
         loads = DataFrames.DataFrame(
             :name => name,
             :loads_bus => BUS_PREFIX .* string.(get_nc_var(data, "loads_bus")),
             :loads_q_set => get_nc_var(data, "loads_q_set", zeros(nload)),
             :loads_p_set => get_nc_var(data, "loads_p_set", zeros(nload)),
         )
+        DataFrames.leftjoin!(loads, pmax, on = :name)
         CSV.write(joinpath(out_path, "load.csv"), loads)
     end
 end

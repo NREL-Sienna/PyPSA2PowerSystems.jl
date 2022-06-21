@@ -89,11 +89,11 @@ load:
   name: active_power
 - custom_name: loads_q_set
   name: reactive_power
-- custom_name: loads_p_set
+- custom_name: pmax
   name: base_power
-- custom_name: loads_p_set
+- custom_name: pmax
   name: max_active_power
-- custom_name: loads_q_set
+- custom_name: pmax
   name: max_reactive_power
 reserves: []
 simulation_objects: []

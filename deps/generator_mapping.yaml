@@ -45,6 +45,7 @@ ThermalStandard:
 - {fuel: null, type: OT}
 - {fuel: null, type: ST}
 - {fuel: BiOMASS, type: null}
+- {fuel: null, type: FC}
 
 GenericBattery:
 - {fuel: STORAGE, type: null}
