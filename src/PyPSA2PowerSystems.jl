@@ -170,7 +170,7 @@ function format_gen(src_file::AbstractString, out_path::AbstractString)
         gens.unit_type =
             getfield.(map(x -> PYPSA_CATS[x], gens.generators_carrier), :prime_mover)
 
-        CSV.write(joinpath(out_path, "gen.csv"), gens)
+        CSV.write(joinpath(out_path, "gen.csv"), gens[gens.generators_p_nom .!= 0.0, :])
     end
 end
 
